@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bass Fretboard Practice - Vertical</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --text-color: #ffffff;
+            --wood: #3e2723;
+            --fret-wire: #9e9e9e;
+            --highlight: #2196f3;
+            --correct: #4caf50;
+            --error: #f44336;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            padding: 40px 0;
+            user-select: none;
+            overflow-y: auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .challenge {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin: 10px 0;
+            letter-spacing: 2px;
+        }
+
+        .instructions {
+            font-size: 1rem;
+            color: #aaaaaa;
+            margin-bottom: 10px;
+        }
+
+        .fretboard-container {
+            position: relative;
+        }
+
+        /* 
+           Grid Layout: 
+           Col 1: Fret Numbers
+           Col 2-5: Strings (E, A, D, G)
+           Row 1: String Labels
+           Row 2: Nut (Fret 0)
+           Row 3-14: Frets 1-12
+        */
+        .fretboard {
+            display: grid;
+            grid-template-columns: 50px repeat(4, 60px);
+            grid-template-rows: 40px 50px repeat(12, 60px);
+            position: relative;
+        }
+
+        /* Wood Background (Only covers the strings area) */
+        .wood-bg {
+            grid-column: 2 / 6;
+            grid-row: 2 / 15;
+            background-color: var(--wood);
+            border-radius: 4px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            z-index: 0;
+        }
+
+        /* Text Labels */
+        .string-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #777;
+            font-size: 1.2rem;
+        }
+
+        .fret-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #777;
+            font-size: 1.1rem;
+            padding-right: 15px;
+        }
+
+        /* Fret Markers (Dots) */
+        .marker-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .marker {
+            width: 18px;
+            height: 18px;
+            background-color: #d7ccc8;
+            border-radius: 50%;
+            opacity: 0.7;
+        }
+
+        /* Fret Wires */
+        .fret-wire {
+            border-bottom: 3px solid var(--fret-wire);
+            z-index: 2;
+            pointer-events: none;
+            height: 100%;
+        }
+
+        .fret-wire-nut {
+            border-bottom: 8px solid #ddd;
+            background-color: #2c1b18;
+            z-index: 2;
+            pointer-events: none;
+            height: 100%;
+            border-top-left-radius: 4px;
+            border-top-right-radius: 4px;
+        }
+
+        /* Continuous Strings */
+        .full-string {
+            justify-self: center;
+            height: 100%;
+            background: linear-gradient(to right, #cfd8dc, #78909c);
+            z-index: 3;
+            pointer-events: none;
+            box-shadow: 2px 0 4px rgba(0,0,0,0.4);
+        }
+
+        .string-E { width: 7px; }
+        .string-A { width: 6px; }
+        .string-D { width: 5px; }
+        .string-G { width: 4px; }
+
+        /* Clickable Grid Cells */
+        .fret-cell {
+            position: relative;
+            z-index: 4;
+            cursor: pointer;
+            transition: background-color 0.1s;
+        }
+
+        .fret-cell:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Note Indicators */
+        .indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 32px;
+            height: 32px;
+            margin-top: -16px;
+            margin-left: -16px;
+            border-radius: 50%;
+            z-index: 5;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+        }
+
+        .highlight .indicator {
+            background-color: var(--highlight);
+            box-shadow: 0 0 15px var(--highlight);
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .correct .indicator {
+            background-color: var(--correct);
+            box-shadow: 0 0 15px var(--correct);
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .error {
+            animation: shake 0.4s;
+        }
+
+        .error .indicator {
+            background-color: var(--error);
+            box-shadow: 0 0 15px var(--error);
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="instructions">Find the closest matching note on the fretboard.</div>
+        <div class="challenge">
+            <span id="direction" style="color: #64b5f6;"></span> 
+            <span style="margin: 0 15px;">&#8594;</span> 
+            <span id="target-note" style="color: #ffb74d;"></span>
+        </div>
+    </div>
+
+    <div class="fretboard-container">
+        <div class="fretboard" id="fretboard"></div>
+    </div>
+
+    <script>
+        // The musical notes
+        const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        
+        // FIXED: The MIDI pitch values for open strings (G, D, A, E)
+        // 40 % 12 = 4 (E), 45 % 12 = 9 (A), 50 % 12 = 2 (D), 55 % 12 = 7 (G)
+        const stringBasePitches = [55, 50, 45, 40]; 
+        
+        const totalFrets = 12; 
+
+        // Mapping strings for visual layout (Left to Right: E, A, D, G)
+        const stringsConfig = [
+            { name: 'E', sIndex: 3, col: 2 },
+            { name: 'A', sIndex: 2, col: 3 },
+            { name: 'D', sIndex: 1, col: 4 },
+            { name: 'G', sIndex: 0, col: 5 }
+        ];
+
+        let currentPitch = null;
+        let validAnswers = [];
+        const fretboardEl = document.getElementById('fretboard');
+
+        // Build the vertical fretboard
+        function initFretboard() {
+            // 0. Base Wood Background
+            let bg = document.createElement('div');
+            bg.className = 'wood-bg';
+            fretboardEl.appendChild(bg);
+
+            // 1. String Labels (Top Row)
+            stringsConfig.forEach(str => {
+                let label = document.createElement('div');
+                label.className = 'string-label';
+                label.innerText = str.name;
+                label.style.gridColumn = str.col;
+                label.style.gridRow = 1;
+                fretboardEl.appendChild(label);
+            });
+
+            // 2. Fret Numbers (Left Column)
+            for (let f = 0; f <= totalFrets; f++) {
+                let label = document.createElement('div');
+                label.className = 'fret-label';
+                label.innerText = f;
+                label.style.gridColumn = 1;
+                label.style.gridRow = f + 2; // Offset for String Labels row
+                fretboardEl.appendChild(label);
+            }
+
+            // 3. Fret Wires
+            for (let f = 0; f <= totalFrets; f++) {
+                let wire = document.createElement('div');
+                wire.className = f === 0 ? 'fret-wire-nut' : 'fret-wire';
+                wire.style.gridColumn = '2 / 6';
+                wire.style.gridRow = f + 2;
+                fretboardEl.appendChild(wire);
+            }
+
+            // 4. Dot Markers (Behind strings)
+            const markerFrets = [3, 5, 7, 9, 12];
+            markerFrets.forEach(f => {
+                let wrapper = document.createElement('div');
+                wrapper.className = 'marker-wrapper';
+                wrapper.style.gridColumn = '2 / 6';
+                wrapper.style.gridRow = f + 2;
+
+                if (f === 12) {
+                    wrapper.style.gap = '60px'; // Align exactly under A and D strings
+                    let m1 = document.createElement('div'); m1.className = 'marker';
+                    let m2 = document.createElement('div'); m2.className = 'marker';
+                    wrapper.appendChild(m1);
+                    wrapper.appendChild(m2);
+                } else {
+                    let m = document.createElement('div'); m.className = 'marker';
+                    wrapper.appendChild(m);
+                }
+                fretboardEl.appendChild(wrapper);
+            });
+
+            // 5. Continuous Strings
+            stringsConfig.forEach(str => {
+                let sLine = document.createElement('div');
+                sLine.className = `full-string string-${str.name}`;
+                sLine.style.gridColumn = str.col;
+                sLine.style.gridRow = '2 / 15'; // Spans from Fret 0 to Fret 12
+                fretboardEl.appendChild(sLine);
+            });
+
+            // 6. Invisible Clickable Overlay & Indicators
+            for (let f = 0; f <= totalFrets; f++) {
+                stringsConfig.forEach(str => {
+                    const cell = document.createElement('div');
+                    cell.className = 'fret-cell';
+                    cell.dataset.string = str.sIndex;
+                    cell.dataset.fret = f;
+                    cell.style.gridColumn = str.col;
+                    cell.style.gridRow = f + 2;
+
+                    const indicator = document.createElement('div');
+                    indicator.className = 'indicator';
+                    cell.appendChild(indicator);
+
+                    cell.addEventListener('click', onFretClick);
+                    fretboardEl.appendChild(cell);
+                });
+            }
+        }
+
+        function startRound() {
+            // Clear previous visual states
+            document.querySelectorAll('.fret-cell').forEach(f => {
+                f.classList.remove('highlight', 'correct', 'error');
+            });
+
+            // Pick a random starting position
+            const startString = Math.floor(Math.random() * 4);
+            const startFret = Math.floor(Math.random() * (totalFrets + 1));
+            currentPitch = stringBasePitches[startString] + startFret;
+            
+            const startCell = document.querySelector(`.fret-cell[data-string="${startString}"][data-fret="${startFret}"]`);
+            startCell.classList.add('highlight');
+            
+            const currentNoteName = notes[currentPitch % 12];
+
+            let targetNote, direction, availableTargets;
+
+            // Generate a valid challenge
+            while (true) {
+                targetNote = notes[Math.floor(Math.random() * 12)];
+                direction = Math.random() < 0.5 ? 'Up' : 'Down'; 
+                
+                if (targetNote === currentNoteName) continue;
+
+                let boardPitches = [];
+                for (let s = 0; s < 4; s++) {
+                    for (let f = 0; f <= totalFrets; f++) {
+                        boardPitches.push(stringBasePitches[s] + f);
+                    }
+                }
+
+                availableTargets = boardPitches.filter(p => {
+                    const pNote = notes[p % 12];
+                    if (pNote !== targetNote) return false;
+                    if (direction === 'Up' && p <= currentPitch) return false;
+                    if (direction === 'Down' && p >= currentPitch) return false;
+                    return true;
+                });
+
+                if (availableTargets.length > 0) break;
+            }
+
+            // Find the closest pitch distance
+            const minDiff = Math.min(...availableTargets.map(p => Math.abs(p - currentPitch)));
+            const closestPitch = direction === 'Up' ? currentPitch + minDiff : currentPitch - minDiff;
+
+            // Map all instances of that exact pitch on the board as valid answers
+            validAnswers = [];
+            for (let s = 0; s < 4; s++) {
+                for (let f = 0; f <= totalFrets; f++) {
+                    if (stringBasePitches[s] + f === closestPitch) {
+                        validAnswers.push(`${s}-${f}`);
+                    }
+                }
+            }
+
+            // Update Header UI
+            document.getElementById('direction').innerText = `${direction} (Pitch)`;
+            document.getElementById('target-note').innerText = targetNote;
+        }
+
+        function onFretClick(e) {
+            const cell = e.currentTarget;
+            if (cell.classList.contains('highlight')) return; 
+            if (cell.classList.contains('correct')) return; 
+
+            const s = cell.dataset.string;
+            const f = cell.dataset.fret;
+            const id = `${s}-${f}`;
+
+            if (validAnswers.includes(id)) {
+                cell.classList.add('correct');
+                setTimeout(startRound, 400);
+            } else {
+                cell.classList.add('error');
+                setTimeout(() => cell.classList.remove('error'), 400);
+            }
+        }
+
+        // Initialize 
+        initFretboard();
+        startRound();
+    </script>
+</body>
+</html>
